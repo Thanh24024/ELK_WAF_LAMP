@@ -1,0 +1,52 @@
+services:
+  waf:
+    image: owasp/modsecurity-crs:nginx
+    container_name: waf
+    volumes:
+      - ./logs/waf:/var/log/modsecurity
+      - ./my-modsec-config:/etc/modsecurity.d
+    ports:
+      - "80:8080" # Mở port 80 cho người dùng truy cập
+    environment:
+      - BACKEND=http://lamp_web:80
+      - PROXY_SSL=off
+      - MODSECURITY=DetectionOnly # Đổi thành 'On' để chặn tấn công
+      - SSL_ENABLED=false
+      - MODSEC_AUDIT_LOG=/var/log/modsecurity/modsec_audit.log
+    networks:
+      - web-net
+
+  web:
+    build: .
+    container_name: lamp_web
+    expose:
+      - "80"
+    volumes:
+      - ./web:/var/www/html
+      - ./logs/apache:/var/log/apache2
+    environment:
+      # QUAN TRỌNG: Kết nối tới IP của Server 2
+      - DB_HOST=192.168.240.158
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=mydb
+    networks:
+      - web-net
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.10
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./logs/apache:/var/log/apache2:ro
+      - ./logs/waf:/var/log/modsecurity:ro
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - ELK_SERVER=192.168.240.157
+    networks:
+      - web-net
+
+networks:
+  web-net:

@@ -1,0 +1,9 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/apache2/*.log
+    - /var/log/modsecurity/modsec_audit.log
+
+output.logstash:
+  hosts: ["192.168.240.157:5044"]
